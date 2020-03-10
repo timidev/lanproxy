@@ -15,6 +15,12 @@ import org.fengfei.lanproxy.server.ProxyChannelManager;
 import org.fengfei.lanproxy.server.config.ProxyConfig;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelFutureListener;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelOption;
+import io.netty.channel.SimpleChannelInboundHandler;
 
 /**
  * 处理服务端 channel.
@@ -37,9 +43,8 @@ public class UserChannelHandler extends SimpleChannelInboundHandler<ByteBuf> {
         Channel userChannel = ctx.channel();
         Channel proxyChannel = userChannel.attr(Constants.NEXT_CHANNEL).get();
         if (proxyChannel == null) {
-
             // 该端口还没有代理客户端
-            ctx.channel().close();
+            ctx.writeAndFlush(Unpooled.copiedBuffer("HTTP/1.0 503 Service Unavailable\r\nContent-Length: 14\r\n\r\nCLIENT OFFLINE".getBytes())).addListener(ChannelFutureListener.CLOSE);
         } else {
             byte[] bytes = new byte[buf.readableBytes()];
             buf.readBytes(bytes);
@@ -61,8 +66,7 @@ public class UserChannelHandler extends SimpleChannelInboundHandler<ByteBuf> {
         if (cmdChannel == null) {
 
             // 该端口还没有代理客户端
-            FullHttpResponse response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.SERVICE_UNAVAILABLE);
-            ctx.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE);
+            // ctx.channel().close();
         } else {
             String userId = newUserId();
             String lanInfo = ProxyConfig.getInstance().getLanInfo(sa.getPort());
